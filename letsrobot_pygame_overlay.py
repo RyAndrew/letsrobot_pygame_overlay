@@ -11,7 +11,7 @@ import datetime
 
 class pythonvideooverlay:
     screen = None;
-    
+
     def __init__(self):
         "Ininitializes a new pygame screen using the framebuffer"
         # Based on "Python GUI in Linux frame buffer"
@@ -64,6 +64,8 @@ class pythonvideooverlay:
         self.cpustat = '/proc/stat'
         self.sep = ' ' 
         self.sleeptime = .5
+
+        self.font = pygame.freetype.SysFont('Verdana', 24, bold=True)
 
     def getcputime(self):
         '''
@@ -152,20 +154,24 @@ class pythonvideooverlay:
         return ('%d days, ' + pattern) % (d, h, m, s)
     
     def getWifiStats(self):
-        cmd = "awk 'NR==3 {print $3}' /proc/net/wireless"
+        qualityCmd = "awk 'NR==3 {print $3}' /proc/net/wireless"
+        strQuality = os.popen(qualityCmd).read()
 
-        strDbm = os.popen(cmd).read()
+        dbmCmd = "awk 'NR==3 {print $4}' /proc/net/wireless"
+        strDbm = os.popen(dbmCmd).read()
+
         if strDbm:
-            dbm = int(float(strDbm.strip()))
-            quality = dbm * 10/7
-            return "{0}% {1}dBm".format(quality, dbm)
+            qualityInt = int(float(strQuality.strip()))
+            qualityPercent = qualityInt * 10/7
+
+            dbmInt = int(float(strDbm.strip()))
+            return "{0}% {1}dBm".format(qualityPercent, dbmInt)
         else:
             return "Not Found"
         
     def drawText(self, text, x=0,y=0,clearScreen=True):
         
-        myfont = pygame.freetype.SysFont('Arial', 30, bold=True)
-        textsurface,rect = myfont.render(text, (255, 0, 0))
+        textsurface,rect = self.font.render(text, (255, 0, 0))
         self.screen.blit(textsurface,(x,y))
 
 
