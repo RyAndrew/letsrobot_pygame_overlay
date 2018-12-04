@@ -8,6 +8,8 @@ from time import sleep
 import sys
 import datetime
 
+#credit first goes to adafruit!
+#https://learn.adafruit.com/pi-video-output-using-pygame/pointing-pygame-to-the-framebuffer
 
 class pythonvideooverlay:
     screen = None;
@@ -163,19 +165,14 @@ class pythonvideooverlay:
         return ('%d days, ' + pattern) % (d, h, m, s)
     
     def getWifiStats(self):
-        #temp file technique to only hit file once. might kill sd card?
-        #os.popen("cat /proc/net/wireless > python_overlay_wifi.tmp")
-        #qualityCmd = "awk 'NR==3 {print $3}' python_overlay_wifi.tmp"
-
         cmd = "awk 'NR==3 {print $3,\"|\",$4}' /proc/net/wireless"
         strQualityDbm = os.popen(cmd).read()
-        strQualityDbmSplit = strQualityDbm.split('|')
-        
-        strQuality = strQualityDbmSplit[0].strip()
-        strDbm = strQualityDbmSplit[1].strip()
 
+        if strQualityDbm:
+            strQualityDbmSplit = strQualityDbm.split('|')
+            strQuality = strQualityDbmSplit[0].strip()
+            strDbm = strQualityDbmSplit[1].strip()
 
-        if strDbm:
             qualityInt = int(float(strQuality))
             qualityPercent = qualityInt * 10/7
 
@@ -259,6 +256,8 @@ while True:
         pygame.display.update()
         #overlay.printDateTimeOutput("update screen!")
 
+        # 500 ms delay so the uptime ticker doesnt jump 2s like it does with a 1 sec delay.
+        #This should be fixed by rewriting the cpu function
         sleep(.5)
 
     except KeyboardInterrupt:
