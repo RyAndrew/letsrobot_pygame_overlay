@@ -1,5 +1,5 @@
 
-This python script uses pygame to create a video stats overlay for use on LetsRobot.TV
+This python script uses pygame to create a video stats overlay for use on https://LetsRobot.TV
 
 FYI: To access /dev/fb0 you must run this python script with sudo!
 
