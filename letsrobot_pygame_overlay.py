@@ -128,7 +128,7 @@ class pythonvideooverlay:
             CPU_Percentage=((Total-PrevTotal)-(Idle-PrevIdle))/(Total-PrevTotal)*100
             cpu_load.update({cpu: CPU_Percentage})
         return cpu_load
-
+    
     def __del__(self):
         "Destructor to make sure pygame shuts down, etc."
 
@@ -150,7 +150,18 @@ class pythonvideooverlay:
         if d == 0:
             return pattern % (h, m, s)
         return ('%d days, ' + pattern) % (d, h, m, s)
+    
+    def getWifiStats(self):
+        cmd = "awk 'NR==3 {print $3}' /proc/net/wireless"
 
+        strDbm = os.popen(cmd).read()
+        if strDbm:
+            dbm = int(float(strDbm.strip()))
+            quality = dbm * 10/7
+            return "{0}% {1}dBm".format(quality, dbm)
+        else:
+            return "Not Found"
+        
     def drawText(self, text, x=0,y=0,clearScreen=True):
         
         myfont = pygame.freetype.SysFont('Arial', 30, bold=True)
@@ -175,10 +186,11 @@ while True:
 
         overlay.drawText("Temp: "+overlay.measure_temp().strip(), 10, 40, False)
 
+        overlay.drawText("Wifi: "+overlay.getWifiStats(), 10, 68, False)
         #this call waits 1 second to capture avg cpu usage
         data = overlay.getcpuload()
         cpuavg = (data["cpu0"]+data["cpu1"]+data["cpu2"]+data["cpu3"])/4
-        overlay.drawText("CPU: "+str(round(cpuavg,1))+"%", 10, 68, False)
+        overlay.drawText("CPU: "+str(round(cpuavg,1))+"%", 10, 96, False)
 
         #update the screen
         pygame.display.update()
