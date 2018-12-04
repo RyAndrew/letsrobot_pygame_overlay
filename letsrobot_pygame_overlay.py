@@ -167,17 +167,19 @@ class pythonvideooverlay:
         #os.popen("cat /proc/net/wireless > python_overlay_wifi.tmp")
         #qualityCmd = "awk 'NR==3 {print $3}' python_overlay_wifi.tmp"
 
-        qualityCmd = "awk 'NR==3 {print $3}' /proc/net/wireless"
-        strQuality = os.popen(qualityCmd).read()
+        cmd = "awk 'NR==3 {print $3,\"|\",$4}' /proc/net/wireless"
+        strQualityDbm = os.popen(cmd).read()
+        strQualityDbmSplit = strQualityDbm.split('|')
+        
+        strQuality = strQualityDbmSplit[0].strip()
+        strDbm = strQualityDbmSplit[1].strip()
 
-        dbmCmd = "awk 'NR==3 {print $4}' /proc/net/wireless"
-        strDbm = os.popen(dbmCmd).read()
 
         if strDbm:
-            qualityInt = int(float(strQuality.strip()))
+            qualityInt = int(float(strQuality))
             qualityPercent = qualityInt * 10/7
 
-            dbmInt = int(float(strDbm.strip()))
+            dbmInt = int(float(strDbm))
             return "{0}% {1}dBm".format(qualityPercent, dbmInt)
         else:
             return "Not Found"
