@@ -127,7 +127,14 @@ class pythonvideooverlay:
 
             Idle = stop[cpu]['idle']
             PrevIdle = start[cpu]['idle']
-            CPU_Percentage=((Total-PrevTotal)-(Idle-PrevIdle))/(Total-PrevTotal)*100
+
+            TotalDelta = Total-PrevTotal
+
+            if TotalDelta == 0:
+                CPU_Percentage=0
+            else:
+                CPU_Percentage=((Total-PrevTotal)-(Idle-PrevIdle))/TotalDelta*100
+
             cpu_load.update({cpu: CPU_Percentage})
         return cpu_load
     
