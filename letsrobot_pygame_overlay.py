@@ -136,7 +136,9 @@ class pythonvideooverlay:
                 CPU_Percentage=((Total-PrevTotal)-(Idle-PrevIdle))/TotalDelta*100
 
             cpu_load.update({cpu: CPU_Percentage})
-        return cpu_load
+
+        cpu_all_cores_avg = (cpu_load["cpu0"]+cpu_load["cpu1"]+cpu_load["cpu2"]+cpu_load["cpu3"])/4
+        return str(round(cpu_all_cores_avg,1))
     
     def __del__(self):
         "Destructor to make sure pygame shuts down, etc."
@@ -161,10 +163,11 @@ class pythonvideooverlay:
         return ('%d days, ' + pattern) % (d, h, m, s)
     
     def getWifiStats(self):
-        qualityCmd = "awk 'NR==3 {print $3}' /proc/net/wireless"
+        os.popen("cat /proc/net/wireless >> python_overlay_wifi.tmp")
+        qualityCmd = "awk 'NR==3 {print $3}' python_overlay_wifi.tmp"
         strQuality = os.popen(qualityCmd).read()
 
-        dbmCmd = "awk 'NR==3 {print $4}' /proc/net/wireless"
+        dbmCmd = "awk 'NR==3 {print $4}' python_overlay_wifi.tmp"
         strDbm = os.popen(dbmCmd).read()
 
         if strDbm:
@@ -181,11 +184,39 @@ class pythonvideooverlay:
         textsurface,rect = self.font.render(text, (255, 0, 0))
         self.screen.blit(textsurface,(x,y))
 
+    def checkTimeDelta(self, last, interval):
+        now = datetime.datetime.now()
+        delta = now - last
+        secondsElapsed = delta.total_seconds()
+
+        #print "headlights delta ",headlightSecondsElapsed
+        if secondsElapsed > interval:
+            return True
+        else:
+            return False
+
+    def printDateTimeOutput(self, text):
+        print str(datetime.datetime.now()) , text
 
 overlay = pythonvideooverlay()
 
 #first time for uptime calculation
-startTime = datetime.datetime.now()
+now = datetime.datetime.now()
+startTime = now
+
+StatsWifi = overlay.getWifiStats()
+StatsWifiLastReading = now
+StatsWifiInterval = 3
+
+StatsTemp = overlay.measure_temp().strip()
+StatsTempLastReading = now
+StatsTempInterval = 4
+
+StatsCpu = overlay.getcpuload()
+StatsCpuLastReading = now
+StatsCpuInterval = 2
+
+overlay.printDateTimeOutput("starting video loop!")
 
 while True:
     try:
@@ -197,16 +228,33 @@ while True:
         delta = nowTime - startTime
         overlay.drawText("Uptime: "+overlay.sec2time(delta.total_seconds()), 10, 10, True)
 
-        overlay.drawText("Temp: "+overlay.measure_temp().strip(), 10, 40, False)
+        if overlay.checkTimeDelta(StatsTempLastReading, StatsTempInterval):
+            StatsTemp = overlay.measure_temp().strip()
+            StatsTempLastReading = datetime.datetime.now()
+            overlay.printDateTimeOutput("read temp!")
 
-        overlay.drawText("Wifi: "+overlay.getWifiStats(), 10, 68, False)
+        overlay.drawText("Temp: "+StatsTemp, 10, 40, False)
+
+        if overlay.checkTimeDelta(StatsWifiLastReading, StatsWifiInterval):
+            StatsWifi = overlay.getWifiStats()
+            StatsWifiLastReading = datetime.datetime.now()
+            overlay.printDateTimeOutput("read wifi!")
+
+        overlay.drawText("Wifi: "+StatsWifi, 10, 68, False)
+
+        if overlay.checkTimeDelta(StatsCpuLastReading, StatsCpuInterval):
+            StatsCpu = overlay.getcpuload()
+            StatsCpuLastReading = datetime.datetime.now()
+            overlay.printDateTimeOutput("read cpu!")
+
         #this call waits 1 second to capture avg cpu usage
-        data = overlay.getcpuload()
-        cpuavg = (data["cpu0"]+data["cpu1"]+data["cpu2"]+data["cpu3"])/4
-        overlay.drawText("CPU: "+str(round(cpuavg,1))+"%", 10, 96, False)
+        overlay.drawText("CPU: "+StatsCpu+"%", 10, 96, False)
 
         #update the screen
         pygame.display.update()
+        overlay.printDateTimeOutput("update screen!")
+
+        sleep(.5)
 
     except KeyboardInterrupt:
         sys.exit("KeyboardInterrupt")   
