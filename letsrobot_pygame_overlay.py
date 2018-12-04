@@ -163,11 +163,14 @@ class pythonvideooverlay:
         return ('%d days, ' + pattern) % (d, h, m, s)
     
     def getWifiStats(self):
-        os.popen("cat /proc/net/wireless > python_overlay_wifi.tmp")
-        qualityCmd = "awk 'NR==3 {print $3}' python_overlay_wifi.tmp"
+        #temp file technique to only hit file once. might kill sd card?
+        #os.popen("cat /proc/net/wireless > python_overlay_wifi.tmp")
+        #qualityCmd = "awk 'NR==3 {print $3}' python_overlay_wifi.tmp"
+
+        qualityCmd = "awk 'NR==3 {print $3}' /proc/net/wireless"
         strQuality = os.popen(qualityCmd).read()
 
-        dbmCmd = "awk 'NR==3 {print $4}' python_overlay_wifi.tmp"
+        dbmCmd = "awk 'NR==3 {print $4}' /proc/net/wireless"
         strDbm = os.popen(dbmCmd).read()
 
         if strDbm:
@@ -231,30 +234,31 @@ while True:
         if overlay.checkTimeDelta(StatsTempLastReading, StatsTempInterval):
             StatsTemp = overlay.measure_temp().strip()
             StatsTempLastReading = datetime.datetime.now()
-            overlay.printDateTimeOutput("read temp!")
+            #overlay.printDateTimeOutput("read temp!")
 
         overlay.drawText("Temp: "+StatsTemp, 10, 40, False)
 
         if overlay.checkTimeDelta(StatsWifiLastReading, StatsWifiInterval):
             StatsWifi = overlay.getWifiStats()
             StatsWifiLastReading = datetime.datetime.now()
-            overlay.printDateTimeOutput("read wifi!")
+            #overlay.printDateTimeOutput("read wifi!")
 
         overlay.drawText("Wifi: "+StatsWifi, 10, 68, False)
 
         if overlay.checkTimeDelta(StatsCpuLastReading, StatsCpuInterval):
             StatsCpu = overlay.getcpuload()
             StatsCpuLastReading = datetime.datetime.now()
-            overlay.printDateTimeOutput("read cpu!")
+            #overlay.printDateTimeOutput("read cpu!")
 
         #this call waits 1 second to capture avg cpu usage
         overlay.drawText("CPU: "+StatsCpu+"%", 10, 96, False)
 
         #update the screen
         pygame.display.update()
-        overlay.printDateTimeOutput("update screen!")
+        #overlay.printDateTimeOutput("update screen!")
 
         sleep(.5)
 
     except KeyboardInterrupt:
+        overlay.printDateTimeOutput("quitting!")
         sys.exit("KeyboardInterrupt")   
