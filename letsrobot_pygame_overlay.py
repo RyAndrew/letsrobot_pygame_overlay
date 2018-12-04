@@ -163,7 +163,7 @@ class pythonvideooverlay:
         return ('%d days, ' + pattern) % (d, h, m, s)
     
     def getWifiStats(self):
-        os.popen("cat /proc/net/wireless >> python_overlay_wifi.tmp")
+        os.popen("cat /proc/net/wireless > python_overlay_wifi.tmp")
         qualityCmd = "awk 'NR==3 {print $3}' python_overlay_wifi.tmp"
         strQuality = os.popen(qualityCmd).read()
 
