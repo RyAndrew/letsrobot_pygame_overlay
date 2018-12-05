@@ -3,8 +3,30 @@ This python script uses pygame to create a video stats overlay for use on https:
 
 FYI: To access /dev/fb0 you must run this python script with sudo!
 
+## Configuragion with the new letsrobot controller
+
+add a line to ffmpeg.py around line 268 so it looks like:
+
+
+videoCommandLine = ('{ffmpeg} -f {input_format} -framerate 25 -video_size {xres}x{yres}'
+
+' -r 25 {in_options} -i {video_device} {video_filter}'
+
+**' -f fbdev -framerate 2 -i /dev/fb0 -filter_complex "[1:v]colorkey=0x000000:0.1:0.0[ckout];[0:v][ckout]overlay[out]" -map "[out]"'**
+
+' -f mpegts -codec:v {video_codec} -b:v {video_bitrate}k -bf 0'
+
+' -muxdelay 0.001 {out_options}'
+
+' http://{video_host}:{video_port}/{stream_key}/{xres}/{yres}/')
+
+
+
+
 To get this to show up on LetsRobot.tv launch this script (with sudo)
-Then modify the send_video.py script on line 177 to include the framebuffer.
+
+## Configuring with the old runmyrobot code:
+Modify the send_video.py script on line 177 to include the framebuffer.
 
 This is the full line:
 
