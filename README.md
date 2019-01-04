@@ -3,6 +3,9 @@
 2. Install pygame: sudo apt install python3-pygame
 3. launch with sudo
 
+## Gotchas
+* Watch out for your CPU usage. If you start getting ffmpeg errors or stream delays its beacuse grabbing and merging data from the framebuffer is too slow.
+* * This can be fixed by lowering the resolution of your framebuffer with raspi-config
 
 This python script uses pygame to create a video stats overlay for use on https://LetsRobot.TV
 
