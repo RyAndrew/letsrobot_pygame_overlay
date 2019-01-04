@@ -1,3 +1,8 @@
+## Installation
+1. Clone this repo
+2. Install pygame: sudo apt install python3-pygame
+3. launch with sudo
+
 
 This python script uses pygame to create a video stats overlay for use on https://LetsRobot.TV
 
