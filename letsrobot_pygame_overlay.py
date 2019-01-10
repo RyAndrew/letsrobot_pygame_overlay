@@ -221,36 +221,46 @@ StatsCpu = overlay.getcpuload(StatsCpuStartLoad, StatsCpuEndLoad)
 
 arduinoSerial = serial.Serial(
     port='/dev/ttyS0',\
-    baudrate=115200,\
+    baudrate=9600,\
     parity=serial.PARITY_NONE,\
     stopbits=serial.STOPBITS_ONE,\
     bytesize=serial.EIGHTBITS,\
-    timeout=.1)
+    timeout=.01)
 arduinoSerial.flushInput()
+
 motorRpms = {
     'A': 0,
     'B': 0
 }
 
 def readSerial(motorRpms):
-    serialStr = arduinoSerial.readline()
-    if len(serialStr) > 1:
-        # overlay.printDateTimeOutput("raw: " + repr(serialStr))
-        # serialStr = serialStr.strip()
-        serialStr = serialStr.replace("\x00", "")
-        serialStr = serialStr.replace("\r", "")
-        serialStr = serialStr.replace("\n", "")
-        # overlay.printDateTimeOutput("raw: " + repr(serialStr))
+    serialStr = arduinoSerial.readline(8)
+    if serialStr and len(serialStr) > 1:
+        overlay.printDateTimeOutput("raw: " + repr(serialStr))
         if len(serialStr) > 8:
-            overlay.printDateTimeOutput("Serial  > 8: " + serialStr)
+            overlay.printDateTimeOutput("Serial Junk > 8: " + serialStr)
+            arduinoSerial.flushInput()
+            motorRpms['A']=0
+            motorRpms['B']=0
         else:
+            overlay.printDateTimeOutput("raw: " + repr(serialStr))
+            # serialStr = serialStr.strip()
+            serialStr = serialStr.replace("\x00", "")
+            serialStr = serialStr.replace("\r", "")
+            serialStr = serialStr.replace("\n", "")
+            # overlay.printDateTimeOutput("raw: " + repr(serialStr))
             # overlay.printDateTimeOutput("Serial Recvd: " + serialStr)
             serialCommand = serialStr.split("=")
             if len(serialCommand) < 2:
                 overlay.printDateTimeOutput("Invalid serial command!")
+                arduinoSerial.flushInput()
+                motorRpms['A']=0
+                motorRpms['B']=0
             else:
                 if len(serialCommand[1]) < 1:
                     overlay.printDateTimeOutput("Invalid serial value!")
+                    motorRpms['A']=0
+                    motorRpms['B']=0
                 else:
                     # overlay.printDateTimeOutput("raw val: " + repr(serialCommand[1]))
                     if serialCommand[0] == 'MA':
@@ -298,7 +308,7 @@ while True:
 
         readSerial(motorRpms)
         readSerial(motorRpms)
-        arduinoSerial.flushInput()
+        #arduinoSerial.flushInput()
 
         if motorRpms['A'] > 0:
             overlay.printDateTimeOutput("Motor A: " + str(motorRpms['A']) + " rpm")
@@ -311,7 +321,7 @@ while True:
         #overlay.printDateTimeOutput("update screen!")
         pygame.display.update()
 
-        sleep(.3)
+        sleep(.2)
 
     except KeyboardInterrupt:
         overlay.printDateTimeOutput("quitting!")
