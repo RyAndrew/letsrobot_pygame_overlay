@@ -11,7 +11,7 @@ import datetime
 import serial
 
 DEVICE = '/dev/video0'
-SIZE = (640, 480)
+SIZE = (1280, 720)
 FILENAME = 'capture.png'
 
 #credit first goes to adafruit!
