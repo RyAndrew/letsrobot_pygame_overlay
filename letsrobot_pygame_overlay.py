@@ -2,11 +2,17 @@ import os
 import pygame
 import pygame.freetype
 import pygame.display
+import pygame.camera
 import time
 import random
 from time import sleep
 import sys
 import datetime
+import serial
+
+DEVICE = '/dev/video0'
+SIZE = (640, 480)
+FILENAME = 'capture.png'
 
 #credit first goes to adafruit!
 #https://learn.adafruit.com/pi-video-output-using-pygame/pointing-pygame-to-the-framebuffer
@@ -18,7 +24,6 @@ class pythonvideooverlay:
         "Ininitializes a new pygame screen using the framebuffer"
         # Based on "Python GUI in Linux frame buffer"
         # http://www.karoltomala.com/blog/?p=679
-
         os.environ["SDL_FBDEV"] = "/dev/fb0"
 
         disp_no = os.getenv("DISPLAY")
@@ -46,19 +51,51 @@ class pythonvideooverlay:
 
         if not found:
             raise Exception('No suitable video driver found!')
-        
+
+#         Fullscreen Framebuffer
+#         size: 640x480
+#         [(1600, 1200), (1280, 1024), (1024, 1024), (1280, 960), (1152, 864), (1024, 768), (800, 600), (768, 576),
+#          (640, 480)]
+# < VideoInfo(hw=1, wm=0, video_mem=1200
+# blit_hw = 0, blit_hw_CC = 0, blit_hw_A = 0,
+# blit_sw = 0, blit_sw_CC = 0, blit_sw_A = 0,
+# bitsize = 16, bytesize = 2,
+# masks = (
+# 63488,
+# 2016,
+# 31,
+# 0),
+# shifts = (
+# 11,
+# 5,
+# 0,
+# 0),
+# losses = (
+# 3,
+# 2,
+# 3,
+# 8),
+# current_w = 640, current_h = 480>
+
         size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
         print "Fullscreen Framebuffer size: %d x %d" % (size[0], size[1])
+        #print pygame.display.mode_ok()
+        print pygame.display.list_modes()
+        print pygame.display.Info()
+
         self.screen = pygame.display.set_mode(size, pygame.FULLSCREEN)
+        #self.screen = pygame.display.set_mode(size, pygame.DOUBLEBUF, 16)
+        #pygame.display.set_mode((600, 400), 0, 32)
 
         print "display init complete"
 
+        pygame.mouse.set_visible(False)
+
         pygame.freetype.init()
 
-        pygame.mouse.set_visible(False)
-        
         # Clear the screen with black
-        self.screen.fill((0, 0, 0))        
+        #self.screen.fill((0, 0, 0))
+        self.screen.fill(0)
 
         pygame.display.update()
 
@@ -67,7 +104,7 @@ class pythonvideooverlay:
         self.sep = ' ' 
         self.sleeptime = .5
 
-        self.font = pygame.freetype.SysFont('Verdana', 24, bold=True)
+        self.font = pygame.freetype.SysFont('Verdana', 18, bold=True)
 
     def getcputime(self):
         '''
@@ -112,14 +149,10 @@ class pythonvideooverlay:
                 cpu_infos.update({cpu_id:{'total':Total,'idle':Idle}})
             return cpu_infos
 
-    def getcpuload(self):
+    def getcpuload(self, start, stop):
         '''
         CPU_Percentage=((Total-PrevTotal)-(Idle-PrevIdle))/(Total-PrevTotal)
         '''
-        start = self.getcputime()
-        #wait a second
-        sleep(self.sleeptime)
-        stop = self.getcputime()
 
         cpu_load = {}
 
@@ -181,10 +214,12 @@ class pythonvideooverlay:
         else:
             return "Not Found"
         
-    def drawText(self, text, x=0,y=0,clearScreen=True):
-        
-        textsurface,rect = self.font.render(text, (255, 0, 0))
-        self.screen.blit(textsurface,(x,y))
+    def drawText(self, text, x=0,y=0,previousRect=None):
+
+        #if previousRect != None:
+
+        textsurface,rect = self.font.render(text, (255, 0, 0), None)
+        return self.screen.blit(textsurface,(x,y))
 
     def checkTimeDelta(self, last, interval):
         now = datetime.datetime.now()
@@ -198,7 +233,44 @@ class pythonvideooverlay:
             return False
 
     def printDateTimeOutput(self, text):
-        print str(datetime.datetime.now()) , text
+        dateNow = datetime.datetime.now()
+        print dateNow.strftime("%Y-%m-%d %H:%M:%S"), text
+
+
+def readSerial(motorRpms):
+    serialStr = arduinoSerial.readline(8)
+    if serialStr and len(serialStr) > 1:
+        overlay.printDateTimeOutput("raw: " + repr(serialStr))
+        if len(serialStr) > 8:
+            overlay.printDateTimeOutput("Serial Junk > 8: " + serialStr)
+            arduinoSerial.flushInput()
+            motorRpms['A']=0
+            motorRpms['B']=0
+        else:
+            overlay.printDateTimeOutput("raw: " + repr(serialStr))
+            # serialStr = serialStr.strip()
+            serialStr = serialStr.replace("\x00", "")
+            serialStr = serialStr.replace("\r", "")
+            serialStr = serialStr.replace("\n", "")
+            # overlay.printDateTimeOutput("raw: " + repr(serialStr))
+            # overlay.printDateTimeOutput("Serial Recvd: " + serialStr)
+            serialCommand = serialStr.split("=")
+            if len(serialCommand) < 2:
+                overlay.printDateTimeOutput("Invalid serial command!")
+                arduinoSerial.flushInput()
+                motorRpms['A']=0
+                motorRpms['B']=0
+            else:
+                if len(serialCommand[1]) < 1:
+                    overlay.printDateTimeOutput("Invalid serial value!")
+                    motorRpms['A']=0
+                    motorRpms['B']=0
+                else:
+                    # overlay.printDateTimeOutput("raw val: " + repr(serialCommand[1]))
+                    if serialCommand[0] == 'MA':
+                        motorRpms['A'] = float(serialCommand[1])
+                    if serialCommand[0] == 'MB':
+                        motorRpms['B'] = float(serialCommand[1])
 
 overlay = pythonvideooverlay()
 
@@ -214,52 +286,107 @@ StatsTemp = overlay.measure_temp().strip()
 StatsTempLastReading = now
 StatsTempInterval = 4
 
-StatsCpu = overlay.getcpuload()
 StatsCpuLastReading = now
 StatsCpuInterval = 2
+StatsCpuStartLoad = overlay.getcputime()
+sleep(1)
+StatsCpuEndLoad = overlay.getcputime()
+StatsCpu = overlay.getcpuload(StatsCpuStartLoad, StatsCpuEndLoad)
 
-overlay.printDateTimeOutput("starting video loop!")
 
+arduinoSerial = serial.Serial(
+    port='/dev/ttyS0',\
+    baudrate=9600,\
+    parity=serial.PARITY_NONE,\
+    stopbits=serial.STOPBITS_ONE,\
+    bytesize=serial.EIGHTBITS,\
+    timeout=.01)
+arduinoSerial.flushInput()
+
+
+motorRpms = {
+    'A': 0,
+    'B': 0
+}
+
+rectTime = None
+rectTemp = None
+rectWifi = None
+rectCpu = None
+rectMotorA = None
+rectMotorB = None
+
+print("connected to arduino on serial port " + arduinoSerial.portstr)
+
+overlay.printDateTimeOutput("starting webcam")
+pygame.camera.init()
+camera = pygame.camera.Camera(DEVICE, SIZE)
+camera.start()
+cameraSurface = pygame.surface.Surface(SIZE, 0, overlay.screen)
+
+overlay.printDateTimeOutput("starting video update loop!")
 while True:
     try:
+        cameraImage = camera.get_image(cameraSurface)
+        overlay.screen.blit(cameraImage, (0, 0))
+        #pygame.display.flip()
 
         #clear the screen
-        overlay.screen.fill((0, 0, 0))   
+        #overlay.screen.fill((0, 0, 0))
+        #overlay.screen.fill(0)
 
         nowTime = datetime.datetime.now()
         delta = nowTime - startTime
-        overlay.drawText("Uptime: "+overlay.sec2time(delta.total_seconds()), 10, 10, True)
+        rectTime = overlay.drawText("Uptime: "+overlay.sec2time(delta.total_seconds()), 10, 10, rectTime)
 
         if overlay.checkTimeDelta(StatsTempLastReading, StatsTempInterval):
             StatsTemp = overlay.measure_temp().strip()
             StatsTempLastReading = datetime.datetime.now()
             #overlay.printDateTimeOutput("read temp!")
 
-        overlay.drawText("Temp: "+StatsTemp, 10, 40, False)
+        rectTemp = overlay.drawText("Temp: "+StatsTemp, 10, 30, rectTemp)
 
         if overlay.checkTimeDelta(StatsWifiLastReading, StatsWifiInterval):
             StatsWifi = overlay.getWifiStats()
             StatsWifiLastReading = datetime.datetime.now()
             #overlay.printDateTimeOutput("read wifi!")
 
-        overlay.drawText("Wifi: "+StatsWifi, 10, 68, False)
+        rectWifi = overlay.drawText("Wifi: "+StatsWifi, 10, 48, rectWifi)
 
         if overlay.checkTimeDelta(StatsCpuLastReading, StatsCpuInterval):
-            StatsCpu = overlay.getcpuload()
+            StatsCpuEndLoad = overlay.getcputime()
+            StatsCpu = overlay.getcpuload(StatsCpuStartLoad, StatsCpuEndLoad)
+            StatsCpuStartLoad = overlay.getcputime()
             StatsCpuLastReading = datetime.datetime.now()
             #overlay.printDateTimeOutput("read cpu!")
 
         #this call waits 1 second to capture avg cpu usage
-        overlay.drawText("CPU: "+StatsCpu+"%", 10, 96, False)
+        rectCpu = overlay.drawText("CPU: "+StatsCpu+"%", 10, 66, rectCpu)
+
+        readSerial(motorRpms)
+        readSerial(motorRpms)
+        #arduinoSerial.flushInput()
+
+        if motorRpms['A'] > 0:
+            overlay.printDateTimeOutput("Motor A: " + str(motorRpms['A']) + " rpm")
+            rectMotorA = overlay.drawText("Motor A: "+str(motorRpms['A'])+" rpm", 460, 10, rectMotorA)
+        else:
+            rectMotorA = None
+        if motorRpms['B'] > 0:
+            overlay.printDateTimeOutput("Motor B: " + str(motorRpms['B']) + " rpm")
+            rectMotorB = overlay.drawText("Motor B: "+str(motorRpms['B'])+" rpm", 460, 30, rectMotorB)
+        else:
+            rectMotorB = None
 
         #update the screen
-        pygame.display.update()
         #overlay.printDateTimeOutput("update screen!")
+        pygame.display.flip()
+        #pygame.display.update((rectTime, rectTemp, rectWifi, rectCpu, rectMotorA,rectMotorB))
 
-        # 500 ms delay so the uptime ticker doesnt jump 2s like it does with a 1 sec delay.
-        #This should be fixed by rewriting the cpu function
-        sleep(.5)
+        #sleep(.01)
 
     except KeyboardInterrupt:
         overlay.printDateTimeOutput("quitting!")
+        camera.stop()
+        pygame.quit()
         sys.exit("KeyboardInterrupt")   
