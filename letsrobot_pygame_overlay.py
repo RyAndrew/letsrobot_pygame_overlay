@@ -30,7 +30,7 @@ class pythonvideooverlay:
         disp_no = os.getenv("DISPLAY")
         if disp_no:
             print "I'm running under X display = {0}".format(disp_no)
-    
+
         # Check which frame buffer drivers are available
         # Start with fbcon since directfb hangs with composite output
         drivers = ['directfb', 'fbcon', 'directfb', 'svgalib']
@@ -428,23 +428,28 @@ while True:
         readSerial()
         readSerial()
         # arduinoSerial.flushInput()
+        
+                
+        overlay.drawText(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 440, 5, rectMotorB)
+        
+        #battery percent
         #8.4 is full, 6.24 is dead
         # 8.4 - 6.24 = 2.19
         # 8.4 - 2.19 = 6.24
         batteryPercent = ((battery['voltage'] - 2.19) / 6.24)*100
-        overlay.drawText("Battery " + format(batteryPercent, '.0f') + "% " + format(battery['voltage'], '.2f') + "V " + format(battery['power'],'.0f') + "mW", 440, 5, rectMotorB)
+        overlay.drawText("Battery " + format(batteryPercent, '.0f') + "% " + format(battery['voltage'], '.2f') + "V " + format(battery['power'],'.0f') + "mA", 440, 25, rectMotorB)
 
         if motorRpms['A'] > 0:
             # overlay.printDateTimeOutput("Motor A: " + str(motorRpms['A']) + " rpm")
-            rectMotorA = overlay.drawText("Motor A: " + str(motorRpms['A']) + " rpm", 440, 25, rectMotorA)
+            rectMotorA = overlay.drawText("Motor A: " + str(motorRpms['A']) + " rpm", 440, 45, rectMotorA)
         else:
             rectMotorA = None
         if motorRpms['B'] > 0:
             # overlay.printDateTimeOutput("Motor B: " + str(motorRpms['B']) + " rpm")
-            rectMotorB = overlay.drawText("Motor B: " + str(motorRpms['B']) + " rpm", 440, 45, rectMotorB)
+            rectMotorB = overlay.drawText("Motor B: " + str(motorRpms['B']) + " rpm", 440, 65, rectMotorB)
         else:
             rectMotorB = None
-
+            
 
         # pygame.display.flip()
 
